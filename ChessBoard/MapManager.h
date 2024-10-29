@@ -3,7 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "LookingForPanduria/ChessBoard/HexCell.h"
+#include "LFP/ChessBoard/HexCell.h"
 #include "MapManager.generated.h"
 /**
  * 
@@ -45,7 +45,7 @@ struct FHexCellData
 };
 
 UCLASS()
-class LOOKINGFORPANDURIA_API AMapManager : public AActor
+class LFP_API AMapManager : public AActor
 {
 	GENERATED_BODY()
 public:

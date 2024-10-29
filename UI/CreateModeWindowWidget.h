@@ -10,7 +10,7 @@
  * 
  */
 UCLASS()
-class LOOKINGFORPANDURIA_API UCreateModeWindowWidget : public UUserWidget
+class LFP_API UCreateModeWindowWidget : public UUserWidget
 {
 	GENERATED_BODY()
 	

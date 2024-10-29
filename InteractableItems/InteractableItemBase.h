@@ -10,7 +10,7 @@ class UCapsuleComponent;
 class UWidgetComponent;
 
 UCLASS()
-class LOOKINGFORPANDURIA_API AInteractableItemBase : public AActor
+class LFP_API AInteractableItemBase : public AActor
 {
 	GENERATED_BODY()
 	

@@ -10,7 +10,7 @@
  * 
  */
 UCLASS()
-class LOOKINGFORPANDURIA_API ALFP_Create_GameMode : public AGameModeBase
+class LFP_API ALFP_Create_GameMode : public AGameModeBase
 {
 	GENERATED_BODY()
 

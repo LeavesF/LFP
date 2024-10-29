@@ -10,7 +10,7 @@
  * 
  */
 UCLASS()
-class LOOKINGFORPANDURIA_API UHexCellInfoWidget : public UUserWidget
+class LFP_API UHexCellInfoWidget : public UUserWidget
 {
 	GENERATED_BODY()
 	

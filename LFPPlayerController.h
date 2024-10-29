@@ -5,6 +5,9 @@
 #include "CoreMinimal.h"
 #include "Templates/SubclassOf.h"
 #include "GameFramework/PlayerController.h"
+
+#include "LFP/ChessBoard/HexCell.h"
+
 #include "LFPPlayerController.generated.h"
 
 /** Forward declaration to improve compiling times */
@@ -21,6 +24,8 @@ class ALFPPlayerController : public APlayerController
 
 public:
 	ALFPPlayerController();
+
+	void PlayerTick(float DeltaTime);
 
 	/** Time Threshold to know if it was a short press */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input)
@@ -42,6 +47,13 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category=Input, meta=(AllowPrivateAccess = "true"))
 	UInputAction* SetDestinationTouchAction;
 
+	/** ChessBoardMappingContext */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
+	class UInputMappingContext* ChessBoardMappingContext;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
+	class UInputAction* SetTargetHexCellClickAction;
+
 protected:
 	/** True if the controlled character should navigate to the mouse cursor. */
 	uint32 bMoveToMouseCursor : 1;
@@ -58,11 +70,24 @@ protected:
 	void OnTouchTriggered();
 	void OnTouchReleased();
 
+	/** Input handlers for SetTargetHexCell action. */
+	void OnSetTargetHexCellStarted();
+
 private:
 	FVector CachedDestination;
 
 	bool bIsTouch; // Is it a touch device
 	float FollowTime; // For how long it has been pressed
+	bool bSlopeAllowMoveTo{ true };
+	bool bHitWalkableGround{ true };
+
+private:
+	void GetItemUnderCursor();
+	class AInteractableItemBase* LastItem = nullptr;
+
+public:
+	UFUNCTION(BlueprintCallable)
+	AHexCell* GetHexCellUnderCursor();
 };
 
 

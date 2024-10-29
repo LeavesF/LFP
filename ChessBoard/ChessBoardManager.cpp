@@ -1,9 +1,9 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 
-#include "LookingForPanduria/ChessBoard/ChessBoardManager.h"
+#include "LFP/ChessBoard/ChessBoardManager.h"
 
-#include "LookingForPanduria/UI/HexCellInfoWidget.h"
+#include "LFP/UI/HexCellInfoWidget.h"
 
 // Sets default values
 AChessBoardManager::AChessBoardManager()

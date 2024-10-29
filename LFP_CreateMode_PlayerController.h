@@ -7,7 +7,7 @@
 #include "GameFramework/PlayerController.h"
 #include "InputActionValue.h"
 
-#include "LookingForPanduria/ChessBoard/HexCell.h"
+#include "LFP/ChessBoard/HexCell.h"
 
 #include "LFP_CreateMode_PlayerController.generated.h"
 
@@ -15,7 +15,7 @@
 class UNiagaraSystem;
 
 UCLASS()
-class LOOKINGFORPANDURIA_API ALFP_CreateMode_PlayerController : public APlayerController
+class LFP_API ALFP_CreateMode_PlayerController : public APlayerController
 {
 	GENERATED_BODY()
 	

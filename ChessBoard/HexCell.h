@@ -46,7 +46,7 @@ DECLARE_DYNAMIC_DELEGATE(FHighlightHexCellEvent);
 DECLARE_DYNAMIC_DELEGATE(FHighlightHexCellConstantEvent);
 
 UCLASS()
-class LOOKINGFORPANDURIA_API AHexCell : public AActor
+class LFP_API AHexCell : public AActor
 {
 	GENERATED_BODY()
 	

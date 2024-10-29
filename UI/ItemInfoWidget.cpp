@@ -1,5 +1,5 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 
-#include "LookingForPanduria/UI/ItemInfoWidget.h"
+#include "LFP/UI/ItemInfoWidget.h"
 

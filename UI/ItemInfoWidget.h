@@ -10,7 +10,7 @@
  * 
  */
 UCLASS()
-class LOOKINGFORPANDURIA_API UItemInfoWidget : public UUserWidget
+class LFP_API UItemInfoWidget : public UUserWidget
 {
 	GENERATED_BODY()
 	

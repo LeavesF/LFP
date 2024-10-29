@@ -4,7 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
-#include "LookingForPanduria/ChessBoard/HexCell.h"
+#include "LFP/ChessBoard/HexCell.h"
 #include "ChessBoardManager.generated.h"
 
 #define M_COS30 (0.866f)
@@ -14,7 +14,7 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE(FClearChessBoardEvent);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FShowChessBoardEvent, bool, bShow);
 
 UCLASS()
-class LOOKINGFORPANDURIA_API AChessBoardManager : public AActor
+class LFP_API AChessBoardManager : public AActor
 {
 	GENERATED_BODY()
 	
@@ -84,7 +84,7 @@ protected:
 public:
 	UFUNCTION(BlueprintCallable, Category = "ChessBoard")
 	void ChangeAllToWalkable();
-	UFUNCTION(BlueprintCallable, Category = "ChessBoard")
+
 	TMap<int, AHexCell*> GetNeighborsForGraph(FHexCellPosition Position);
 	UFUNCTION(BlueprintCallable, Category = "ChessBoard")
 	TArray<AHexCell*> GetIslandOutline(const TArray<AHexCell*>& hexes);

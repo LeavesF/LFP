@@ -1,7 +1,7 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 
-#include "LookingForPanduria/ChessBoard/HexCell.h"
+#include "LFP/ChessBoard/HexCell.h"
 
 // Sets default values
 AHexCell::AHexCell()

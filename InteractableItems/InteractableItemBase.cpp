@@ -1,11 +1,11 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 
-#include "LookingForPanduria/InteractableItems/InteractableItemBase.h"
+#include "LFP/InteractableItems/InteractableItemBase.h"
 
 #include "Components/WidgetComponent.h"
 #include "Components/CapsuleComponent.h"
-#include "LookingForPanduria/UI/ItemInfoWidget.h"
+#include "LFP/UI/ItemInfoWidget.h"
 
 // Sets default values
 AInteractableItemBase::AInteractableItemBase()
