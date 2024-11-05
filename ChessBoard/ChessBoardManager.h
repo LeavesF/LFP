@@ -5,9 +5,11 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 #include "LFP/ChessBoard/HexCell.h"
+#include "Engine/Datatable.h"
 #include "ChessBoardManager.generated.h"
 
 #define M_COS30 (0.866f)
+#define SQU3 1.73205
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FCreateChessBoardEvent);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FClearChessBoardEvent);
@@ -65,12 +67,22 @@ public:
 	TArray<AHexCell*> FindPath(AHexCell* StartCell, AHexCell* TargetCell);
 
 protected:
-	float EdgeLength{ 100.f };
+	float edgeLength{ 100.f };
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "ChessBoard")
-	int32 NumRows{ 5 };
+	int32 numRows{ 5 };
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "ChessBoard")
-	int32 NumColumns{ 5 };
+	int32 numColumns{ 5 };
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "ChessBoard")
+	UDataTable* hexCellTable;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "ChessBoard")
+	UDataTable* polygonVerticesTable;
+
+	TSet<FHexCellPosition> hexCellSet;
+
+	TMap<FVector2f, FVector2f> outlineEdgeSet;
 
 	FVector CalculateCellLocation(int32 Row, int32 Col);
 
@@ -85,7 +97,10 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "ChessBoard")
 	void ChangeAllToWalkable();
 
-	TMap<int, AHexCell*> GetNeighborsForGraph(FHexCellPosition Position);
+	TArray<int32> GetNeighborsForGraph(FHexCellPosition Position);
 	UFUNCTION(BlueprintCallable, Category = "ChessBoard")
-	TArray<AHexCell*> GetIslandOutline(const TArray<AHexCell*>& hexes);
+	void GetIslandOutlineEdges(const TSet<FHexCellPosition> hexCellSet);
+
+	UFUNCTION(BlueprintCallable, Category = "ChessBoard")
+	TArray<FVector2f> GetIslandOutlineVertices();
 };

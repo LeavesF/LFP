@@ -6,18 +6,20 @@
 #include "GameFramework/Actor.h"
 #include "Components/WidgetComponent.h"
 #include "Components/DecalComponent.h"
+#include "Engine/Datatable.h"
 #include "HexCell.generated.h"
 
-USTRUCT()
-struct FHexCellPosition
+USTRUCT(BlueprintType)
+struct FHexCellPosition : public FTableRowBase
 {
 	GENERATED_USTRUCT_BODY()
 
-	UPROPERTY()
+public:
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Table")
 	int32 Q{ 0 };
-	UPROPERTY()
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Table")
 	int32 R{ 0 };
-	UPROPERTY()
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Table")
 	int32 S{ 0 };
 
 	FHexCellPosition()
@@ -39,6 +41,76 @@ struct FHexCellPosition
 	bool operator!=(const FHexCellPosition& Other) const
 	{
 		return (Q != Other.Q || R != Other.R);
+	}
+
+	friend uint32 GetTypeHash(const FHexCellPosition& hexCellPosition)
+	{
+		return HashCombine(GetTypeHash(hexCellPosition.Q), GetTypeHash(hexCellPosition.R));
+	}
+};
+
+USTRUCT(BlueprintType)
+struct FHexEdge : public FTableRowBase
+{
+	GENERATED_USTRUCT_BODY()
+
+public:
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Table")
+	FVector2f A{ (0,0) };
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Table")
+	FVector2f B{ (0,0) };
+
+	FHexEdge()
+		: A((0, 0))
+		, B((0, 0))
+	{ }
+
+	FHexEdge(FVector2f newA, FVector2f newB)
+		: A(newA)
+		, B(newB)
+	{ }
+
+	bool operator==(const FHexEdge& Other) const
+	{
+		return (A == Other.A && B == Other.B);
+	}
+
+	bool operator!=(const FHexEdge& Other) const
+	{
+		return (A != Other.A || B != Other.B);
+	}
+
+	friend uint32 GetTypeHash(const FHexEdge& hexEdge)
+	{
+		return HashCombine(GetTypeHash(hexEdge.A), GetTypeHash(hexEdge.B));
+	}
+};
+
+USTRUCT(BlueprintType)
+struct FPolygonVertices : public FTableRowBase
+{
+	GENERATED_USTRUCT_BODY()
+
+public:
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Table")
+	TArray<FVector2f> A{ };
+
+	FPolygonVertices()
+		: A()
+	{ }
+
+	FPolygonVertices(TArray<FVector2f> array)
+		: A(array)
+	{ }
+
+	bool operator==(const FPolygonVertices& Other) const
+	{
+		return (A == Other.A);
+	}
+
+	bool operator!=(const FPolygonVertices& Other) const
+	{
+		return (A != Other.A);
 	}
 };
 

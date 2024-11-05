@@ -31,14 +31,42 @@ void AChessBoardManager::Tick(float DeltaTime)
 
 void AChessBoardManager::CreateChessBoard()
 {
+	if (hexCellTable != nullptr)
+	{
+		hexCellSet.Empty();
+		for (auto it : hexCellTable->GetRowMap())
+		{
+			FHexCellPosition* row = (FHexCellPosition*)it.Value;
+			if (row)
+			{
+				hexCellSet.Add(*row);
+			}
+		}
+	}
+	GetIslandOutlineEdges(hexCellSet);
+
+	polygonVerticesTable->EmptyTable();
+
+	TArray<FVector2f> polygonVerticesArray = GetIslandOutlineVertices();
+	if (polygonVerticesTable != nullptr)
+	{
+		polygonVerticesTable->AddRow("d", FPolygonVertices(polygonVerticesArray));
+	}
+	
+	TArray<FVector2f> polygonVerticesArray2 = GetIslandOutlineVertices();
+	if (polygonVerticesTable != nullptr)
+	{
+		polygonVerticesTable->AddRow("f", FPolygonVertices(polygonVerticesArray2));
+	}
+	return;
 	/*if (HexCellMesh == nullptr)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("No UnitMesh!"));
 		return;
 	}*/
-	for (int32 Row = 0; Row < NumRows; Row++)
+	for (int32 Row = 0; Row < numRows; Row++)
 	{
-		for (int32 Col = 0; Col < NumColumns; Col++)
+		for (int32 Col = 0; Col < numColumns; Col++)
 		{
 			FActorSpawnParameters SpawnParam = FActorSpawnParameters();
 			SpawnParam.bAllowDuringConstructionScript = true;
@@ -69,7 +97,6 @@ void AChessBoardManager::CreateChessBoard()
 			}
 		}
 	}
-	GetIslandOutline(HexCells);
 }
 
 void AChessBoardManager::ClearChessBoard()
@@ -157,13 +184,13 @@ FVector AChessBoardManager::CalculateCellLocation(int32 Row, int32 Col)
 	FVector CellLocation = FVector::Zero();
 	if (Row % 2 == 1)
 	{
-		CellLocation.X = Row * EdgeLength * 1.5f;
-		CellLocation.Y = Col * EdgeLength * 2 * M_COS30;
+		CellLocation.X = Row * edgeLength * 1.5f;
+		CellLocation.Y = Col * edgeLength * 2 * M_COS30;
 	}
 	else
 	{
-		CellLocation.X = (Row * EdgeLength * 1.5f);
-		CellLocation.Y = Col * EdgeLength * 2 * M_COS30 + (EdgeLength * M_COS30);
+		CellLocation.X = (Row * edgeLength * 1.5f);
+		CellLocation.Y = Col * edgeLength * 2 * M_COS30 + (edgeLength * M_COS30);
 	}
 	
 
@@ -225,9 +252,9 @@ void AChessBoardManager::ChangeAllToWalkable()
 	}
 }
 
-TMap<int, AHexCell*> AChessBoardManager::GetNeighborsForGraph(FHexCellPosition Position)
+TArray<int32> AChessBoardManager::GetNeighborsForGraph(FHexCellPosition Position)
 {
-	TMap<int, AHexCell*> Neighbors;
+	TArray<int32> Neighbors;
 	TArray<FHexCellPosition> NeighborPositions;
 
 	NeighborPositions.Add(FHexCellPosition(Position.Q + 1, Position.R));		// 0'方向
@@ -241,14 +268,10 @@ TMap<int, AHexCell*> AChessBoardManager::GetNeighborsForGraph(FHexCellPosition P
 	for (FHexCellPosition TempPos : NeighborPositions)
 	{
 		//AHexCell* Neighbor = *(HexCellPosMap.Find(CalculateHashValue(TempPos.Q, TempPos.R)));
-		AHexCell** NeighborPtr = HexCellPosMap.Find(CalculateHashValue(TempPos.Q, TempPos.R));
+		FHexCellPosition* NeighborPtr = hexCellSet.Find(TempPos);
 		if (NeighborPtr != nullptr)
 		{
-			AHexCell* Neighbor = *NeighborPtr;
-			if (Neighbor /*&& Neighbor->height=curHeight*/)
-			{
-				Neighbors.Add(index, Neighbor);
-			}
+			Neighbors.Add(index);
 		}
 		index++;
 	}
@@ -257,21 +280,101 @@ TMap<int, AHexCell*> AChessBoardManager::GetNeighborsForGraph(FHexCellPosition P
 }
 
 // 获取多边形轮廓的顶点列表  
-TArray<AHexCell*> AChessBoardManager::GetIslandOutline(const TArray<AHexCell*>& hexArray) {
-	TArray<AHexCell*> outline;
-
-	for (const auto& hex : hexArray) {
-		TArray<AHexCell*> neighbors = GetNeighbors(hex->SelfCellPos);
-		if (neighbors.Num() < 6) {
-			outline.Add(hex);
-			UE_LOG(LogTemp, Log, TEXT("轮廓坐标 Q: %d, R: %d"), hex->SelfCellPos.Q, hex->SelfCellPos.R);
+void AChessBoardManager::GetIslandOutlineEdges(const TSet<FHexCellPosition> inHexCellSet)
+{
+	for (const auto hex : inHexCellSet) {
+		TArray<int32> neighbors = GetNeighborsForGraph(hex);
+		TArray<int32> outline = { 1,1,1,1,1,1 };
+		for (int neighbor : neighbors)
+		{
+			outline[neighbor] = 0;
+		}
+		for (int index = 0; index < 6; index++)
+		{
+			if (outline[index] == 1)
+			{
+				FHexEdge outlineEdge = FHexEdge();
+				switch (index)
+				{
+				case 0:
+					outlineEdge.A.X = 2 * SQU3 * hex.Q + SQU3 * hex.R + SQU3;
+					outlineEdge.A.Y = -3 * hex.R - 1;
+					outlineEdge.B.X = 2 * SQU3 * hex.Q + SQU3 * hex.R + SQU3;
+					outlineEdge.B.Y = -3 * hex.R + 1;
+					break;
+				case 1:
+					outlineEdge.A.X = 2 * SQU3 * hex.Q + SQU3 * hex.R + SQU3;
+					outlineEdge.A.Y = -3 * hex.R + 1;
+					outlineEdge.B.X = 2 * SQU3 * hex.Q + SQU3 * hex.R;
+					outlineEdge.B.Y = -3 * hex.R + 2;
+					break;
+				case 2:
+					outlineEdge.A.X = 2 * SQU3 * hex.Q + SQU3 * hex.R;
+					outlineEdge.A.Y = -3 * hex.R + 2;
+					outlineEdge.B.X = 2 * SQU3 * hex.Q + SQU3 * hex.R - SQU3;
+					outlineEdge.B.Y = -3 * hex.R + 1;
+					break;
+				case 3:
+					outlineEdge.A.X = 2 * SQU3 * hex.Q + SQU3 * hex.R - SQU3;
+					outlineEdge.A.Y = -3 * hex.R + 1;
+					outlineEdge.B.X = 2 * SQU3 * hex.Q + SQU3 * hex.R - SQU3;
+					outlineEdge.B.Y = -3 * hex.R - 1;
+					break;
+				case 4:
+					outlineEdge.A.X = 2 * SQU3 * hex.Q + SQU3 * hex.R - SQU3;
+					outlineEdge.A.Y = -3 * hex.R - 1;
+					outlineEdge.B.X = 2 * SQU3 * hex.Q + SQU3 * hex.R;
+					outlineEdge.B.Y = -3 * hex.R - 2;
+					break;
+				case 5:
+					outlineEdge.A.X = 2 * SQU3 * hex.Q + SQU3 * hex.R;
+					outlineEdge.A.Y = -3 * hex.R - 2;
+					outlineEdge.B.X = 2 * SQU3 * hex.Q + SQU3 * hex.R + SQU3;
+					outlineEdge.B.Y = -3 * hex.R - 1;
+					break;
+				default:
+					break;
+				}
+				outlineEdgeSet.Add(outlineEdge.A, outlineEdge.B);
+				UE_LOG(LogTemp, Warning, TEXT("start(%f,%f);end(%f,%f)"), outlineEdge.A.X, outlineEdge.A.Y, outlineEdge.B.X, outlineEdge.B.Y);
+			}
 		}
 	}
-
-	//// 对轮廓顶点进行排序，确保顺时针或逆时针顺序  
-	//std::sort(outline.begin(), outline.end(), [](const AHexCell& a, const AHexCell& b) {
-	//	return std::atan2(a.SelfCellPos.Q - b.SelfCellPos.Q, a.SelfCellPos.R - b.SelfCellPos.R) < 0;
-	//	});
-
-	return outline;
 }
+
+TArray<FVector2f> AChessBoardManager::GetIslandOutlineVertices()
+{
+	TMap<FVector2f, FVector2f>::TIterator iter = outlineEdgeSet.CreateIterator();
+	FVector2f* startPoint;
+	FVector2f* endPoint;
+
+	TArray<FVector2f> polygonVerticesArray;
+	//polygonVerticesArray.Add(iter->Key);
+	startPoint = outlineEdgeSet.Find(iter->Key);
+	while (true)
+	{
+		endPoint = outlineEdgeSet.Find(*startPoint);
+		if (endPoint == nullptr)
+		{
+			break;
+		}
+		polygonVerticesArray.Add(*endPoint * 100);
+		UE_LOG(LogTemp, Warning, TEXT("Point(%f,%f)"), endPoint->X, endPoint->Y);
+		outlineEdgeSet.Remove(*startPoint);
+
+		startPoint = outlineEdgeSet.Find(*endPoint);
+		if (startPoint == nullptr)
+		{
+			break;
+		}
+		polygonVerticesArray.Add(*startPoint * 100);
+		UE_LOG(LogTemp, Warning, TEXT("Point(%f,%f)"), startPoint->X, startPoint->Y);
+		outlineEdgeSet.Remove(*endPoint);
+	}
+	/*if (polygonVerticesTable != nullptr)
+	{
+		polygonVerticesTable->AddRow("d", FPolygonVertices(polygonVerticesArray));
+	}*/
+	return polygonVerticesArray;
+}
+
