@@ -24,7 +24,7 @@ struct FHexCellData
 {
 	GENERATED_USTRUCT_BODY()
 
-		FHexCellPosition Location;
+		FHexCellInfo Location;
 	int32 Height;
 	float MovementPointCost;
 	ETerrain Terrain;
@@ -34,7 +34,7 @@ struct FHexCellData
 
 	FHexCellData()
 	{
-		Location = FHexCellPosition();
+		Location = FHexCellInfo();
 		Height = 0;
 		MovementPointCost = 0.f;
 		Terrain = Plain;

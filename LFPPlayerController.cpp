@@ -12,6 +12,7 @@
 #include "EnhancedInputSubsystems.h"
 #include "Engine/LocalPlayer.h"
 #include "LFP/InteractableItems/InteractableItemBase.h"
+#include <Kismet/GameplayStatics.h>
 
 DEFINE_LOG_CATEGORY(LogTemplateCharacter);
 
@@ -39,6 +40,24 @@ void ALFPPlayerController::BeginPlay()
 	if (UEnhancedInputLocalPlayerSubsystem* Subsystem = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(GetLocalPlayer()))
 	{
 		Subsystem->AddMappingContext(DefaultMappingContext, 0);
+	}
+	// 查找场景中的 Actor  
+	TArray<AActor*> FoundActors;
+	UGameplayStatics::GetAllActorsOfClass(GetWorld(), AChessBoardManager::StaticClass(), FoundActors);
+
+	// 如果找到 Actor，赋值给 TargetActor  
+	if (FoundActors.Num() > 0)
+	{
+		chessBoardManager = Cast<AChessBoardManager>(FoundActors[0]);
+
+		if (chessBoardManager)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("Found Target Actor: %s"), *chessBoardManager->GetName());
+		}
+		else
+		{
+			UE_LOG(LogTemp, Warning, TEXT("Failed to cast to AMyActor"));
+		}
 	}
 }
 
@@ -144,6 +163,14 @@ void ALFPPlayerController::OnSetDestinationReleased()
 		}
 
 		// We move to CachedDestination and spawn some particles
+		if (chessBoardManager)
+		{
+			FHexCellInfo* hexCellPtr = chessBoardManager->GetHexCellUnderXYPoint(CachedDestination);
+			if (hexCellPtr)
+			{
+				CachedDestination = chessBoardManager->GetXYPointOfHexCell(hexCellPtr->Q, hexCellPtr->R, CachedDestination);
+			}
+		}
 		UAIBlueprintHelperLibrary::SimpleMoveToLocation(this, CachedDestination);
 		UNiagaraFunctionLibrary::SpawnSystemAtLocation(this, FXCursor, CachedDestination, FRotator::ZeroRotator, FVector(1.f, 1.f, 1.f), true, true, ENCPoolMethod::None, true);
 

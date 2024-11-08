@@ -18,8 +18,8 @@ AChessBoardManager::AChessBoardManager()
 void AChessBoardManager::BeginPlay()
 {
 	Super::BeginPlay();
-	
-	//HexCellPosMap.Empty();
+	CreateChessBoard();
+	//hexCellSet.Empty();
 }
 
 // Called every frame
@@ -31,77 +31,57 @@ void AChessBoardManager::Tick(float DeltaTime)
 
 void AChessBoardManager::CreateChessBoard()
 {
-	if (hexCellTable != nullptr)
+	if (hexCellTable == nullptr)
 	{
-		hexCellSet.Empty();
-		for (auto it : hexCellTable->GetRowMap())
-		{
-			FHexCellPosition* row = (FHexCellPosition*)it.Value;
-			if (row)
-			{
-				hexCellSet.Add(*row);
-			}
-		}
+		return;
 	}
-	GetIslandOutlineEdges(hexCellSet);
-
+	hexCellSet.Empty();
 	polygonVerticesTable->EmptyTable();
 
-	TArray<FVector2f> polygonVerticesArray = GetIslandOutlineVertices();
-	if (polygonVerticesTable != nullptr)
+	for (auto it : hexCellTable->GetRowMap())
 	{
-		polygonVerticesTable->AddRow("d", FPolygonVertices(polygonVerticesArray));
-	}
-	
-	TArray<FVector2f> polygonVerticesArray2 = GetIslandOutlineVertices();
-	if (polygonVerticesTable != nullptr)
-	{
-		polygonVerticesTable->AddRow("f", FPolygonVertices(polygonVerticesArray2));
-	}
-	return;
-	/*if (HexCellMesh == nullptr)
-	{
-		UE_LOG(LogTemp, Warning, TEXT("No UnitMesh!"));
-		return;
-	}*/
-	for (int32 Row = 0; Row < numRows; Row++)
-	{
-		for (int32 Col = 0; Col < numColumns; Col++)
+		FHexCellInfo* row = (FHexCellInfo*)it.Value;
+		if (row)
 		{
-			FActorSpawnParameters SpawnParam = FActorSpawnParameters();
-			SpawnParam.bAllowDuringConstructionScript = true;
-
-			AHexCell* CellActor = GetWorld()->SpawnActor<AHexCell>(HexCellActor, FVector::ZeroVector, FRotator::ZeroRotator, SpawnParam);
-			if (CellActor)
+			hexCellSet.Add(*row);
+		}
+	}
+	int32 index = 0;
+	for (int32 height = 0; height < 4; height++)
+	{
+		GetIslandOutlineEdges(hexCellSetPtr, height);
+		if (outlineEdgeSet.IsEmpty())
+		{
+			continue;
+		}
+		while (index < 1024)
+		{
+			FString tempString = FString::Printf(TEXT("Vertices_%d"), index);
+			FName rowName(*tempString);
+			TArray<FVector2f> polygonVerticesArray = GetIslandOutlineVertices();
+			if (polygonVerticesTable != nullptr)
 			{
-				OnClearChessBoardEvent.AddDynamic(CellActor, &AHexCell::CellDestroy);
-				OnShowChessBoardEvent.AddDynamic(CellActor, &AHexCell::ShowDecal);
-
-				CellActor->AttachToActor(this, FAttachmentTransformRules::KeepRelativeTransform);
-				CellActor->SetActorRelativeLocation(CalculateCellLocation(Row, Col));
-
-				int32 TempQ = (((Row & 1) - Row) / 2) - Col;
-				int32 TempR = Row;
-				// Store CellPosition data
-				CellActor->SelfCellPos = FHexCellPosition(TempQ, TempR);
-				HexCells.Add(CellActor);
-				HexCellPosMap.Add(CalculateHashValue(TempQ, TempR), CellActor);
-
-				UHexCellInfoWidget* InfoWidget = Cast<UHexCellInfoWidget>(CellActor->WidgetComponent->GetWidget());
-				if (InfoWidget)
+				if (!polygonVerticesArray.IsEmpty())
 				{
-					InfoWidget->SetCellInfo(TempQ, TempR);
+					polygonVerticesTable->AddRow(rowName, FPolygonVertices(polygonVerticesArray, height));
 				}
-				//TODO: Material
-				//CellActor->MeshComponent->SetStaticMesh(HexCellMesh);
+				else
+				{
+					break;
+				}
 			}
+			else
+			{
+				break;
+			}
+			index++;
 		}
 	}
 }
 
 void AChessBoardManager::ClearChessBoard()
 {
-	HexCells.Empty();
+	hexCellSet.Empty();
 	OnClearChessBoardEvent.Broadcast();
 	OnClearChessBoardEvent.Clear();
 }
@@ -111,73 +91,73 @@ void AChessBoardManager::ShowChessBoard(bool bShow /*= false*/)
 	OnShowChessBoardEvent.Broadcast(bShow);
 }
 
-TArray<AHexCell*> AChessBoardManager::FindPath(AHexCell* StartCell, AHexCell* TargetCell)
-{
-	TArray<AHexCell*> ToSearch;
-	TArray<AHexCell*> Processed;
-	TArray<AHexCell*> Path;
-	if (StartCell == nullptr || TargetCell == nullptr)
-	{
-		return Path;
-	}
-	StartCell->AStar_H = GetDistanceBetweenTwoHexCell(StartCell, TargetCell);
-	StartCell->AStar_F = StartCell->AStar_H;
-	ToSearch.Add(StartCell);
-
-	while (!ToSearch.IsEmpty())
-	{
-		AHexCell* Current = ToSearch[0];
-		for (AHexCell* Temp : ToSearch)
-		{
-			if (Temp->AStar_F < Current->AStar_F || (Temp->AStar_F == Current->AStar_F && Temp->AStar_H < Current->AStar_H))
-			{
-				Current = Temp;
-			}
-		}
-
-		Processed.Add(Current);
-		ToSearch.Remove(Current);
-
-		if (Current == TargetCell)
-		{
-			AHexCell* CurrentPathTile = TargetCell;
-			while (CurrentPathTile != StartCell)
-			{
-				Path.Add(CurrentPathTile);
-				CurrentPathTile = CurrentPathTile->ConnectedCell;
-			}
-			Path.Add(StartCell);
-		}
-
-		TArray<AHexCell*> Neighbors = GetNeighbors(Current->SelfCellPos);
-		for (AHexCell* Neighbor : Neighbors)
-		{
-			if (Processed.Contains(Neighbor))
-			{
-				continue;
-			}
-
-			bool bInSearch = ToSearch.Contains(Neighbor);
-			//TODO: int32 CostToNeighbor = Current->AStar_G + Current->GetDistance(Neighbor);
-			int32 CostToNeighbor = Current->AStar_G + 1;
-
-			if (!bInSearch || CostToNeighbor < Neighbor->AStar_G)
-			{
-				Neighbor->AStar_G = CostToNeighbor;
-				Neighbor->ConnectedCell = Current;
-
-				if (!bInSearch)
-				{
-					Neighbor->AStar_H = GetDistanceBetweenTwoHexCell(Neighbor, TargetCell);
-					Neighbor->AStar_F = Neighbor->AStar_G + Neighbor->AStar_H;
-					ToSearch.Add(Neighbor);
-				}
-			}
-		}
-	}
-
-	return Path;
-}
+//TArray<FHexCellInfo> AChessBoardManager::FindPath(FHexCellInfo StartCell, FHexCellInfo TargetCell)
+//{
+//	TArray<FHexCellInfo> ToSearch;
+//	TArray<FHexCellInfo> Processed;
+//	TArray<FHexCellInfo> Path;
+//	/*if (StartCell == nullptr || TargetCell == nullptr)
+//	{
+//		return Path;
+//	}*/
+//	StartCell->AStar_H = GetDistanceBetweenTwoHexCell(StartCell, TargetCell);
+//	StartCell->AStar_F = StartCell->AStar_H;
+//	ToSearch.Add(StartCell);
+//
+//	while (!ToSearch.IsEmpty())
+//	{
+//		AHexCell* Current = ToSearch[0];
+//		for (AHexCell* Temp : ToSearch)
+//		{
+//			if (Temp->AStar_F < Current->AStar_F || (Temp->AStar_F == Current->AStar_F && Temp->AStar_H < Current->AStar_H))
+//			{
+//				Current = Temp;
+//			}
+//		}
+//
+//		Processed.Add(Current);
+//		ToSearch.Remove(Current);
+//
+//		if (Current == TargetCell)
+//		{
+//			AHexCell* CurrentPathTile = TargetCell;
+//			while (CurrentPathTile != StartCell)
+//			{
+//				Path.Add(CurrentPathTile);
+//				CurrentPathTile = CurrentPathTile->ConnectedCell;
+//			}
+//			Path.Add(StartCell);
+//		}
+//
+//		TArray<AHexCell*> neighbors = GetNeighbors(Current->SelfCellPos);
+//		for (AHexCell* Neighbor : neighbors)
+//		{
+//			if (Processed.Contains(Neighbor))
+//			{
+//				continue;
+//			}
+//
+//			bool bInSearch = ToSearch.Contains(Neighbor);
+//			//TODO: int32 CostToNeighbor = Current->AStar_G + Current->GetDistance(Neighbor);
+//			int32 CostToNeighbor = Current->AStar_G + 1;
+//
+//			if (!bInSearch || CostToNeighbor < Neighbor->AStar_G)
+//			{
+//				Neighbor->AStar_G = CostToNeighbor;
+//				Neighbor->ConnectedCell = Current;
+//
+//				if (!bInSearch)
+//				{
+//					Neighbor->AStar_H = GetDistanceBetweenTwoHexCell(Neighbor, TargetCell);
+//					Neighbor->AStar_F = Neighbor->AStar_G + Neighbor->AStar_H;
+//					ToSearch.Add(Neighbor);
+//				}
+//			}
+//		}
+//	}
+//
+//	return Path;
+//}
 
 FVector AChessBoardManager::CalculateCellLocation(int32 Row, int32 Col)
 {
@@ -197,41 +177,39 @@ FVector AChessBoardManager::CalculateCellLocation(int32 Row, int32 Col)
 	return CellLocation;
 }
 
-TArray<AHexCell*> AChessBoardManager::GetNeighbors(FHexCellPosition Position)
+TArray<FHexCellInfo*> AChessBoardManager::GetNeighbors(FHexCellInfo* Position)
 {
-	TArray<AHexCell*> Neighbors;
-	TArray<FHexCellPosition> NeighborPositions;
+	TArray<FHexCellInfo*> neighbors;
+	TArray<FHexCellInfo> neighborPositions;
 
-	NeighborPositions.Add(FHexCellPosition(Position.Q + 1, Position.R));		// 0'方向
-	NeighborPositions.Add(FHexCellPosition(Position.Q + 1, Position.R - 1));	// 60'方向
-	NeighborPositions.Add(FHexCellPosition(Position.Q, Position.R - 1));		// 120'方向
-	NeighborPositions.Add(FHexCellPosition(Position.Q - 1, Position.R));		// 180'方向
-	NeighborPositions.Add(FHexCellPosition(Position.Q - 1, Position.R + 1));	// 240'方向
-	NeighborPositions.Add(FHexCellPosition(Position.Q, Position.R + 1));		// 300'方向
+	neighborPositions.Add(FHexCellInfo(Position->Q + 1, Position->R));		// 0'方向
+	neighborPositions.Add(FHexCellInfo(Position->Q + 1, Position->R - 1));	// 60'方向
+	neighborPositions.Add(FHexCellInfo(Position->Q, Position->R - 1));		// 120'方向
+	neighborPositions.Add(FHexCellInfo(Position->Q - 1, Position->R));		// 180'方向
+	neighborPositions.Add(FHexCellInfo(Position->Q - 1, Position->R + 1));	// 240'方向
+	neighborPositions.Add(FHexCellInfo(Position->Q, Position->R + 1));		// 300'方向
 
 	int index = 0;
-	for (FHexCellPosition TempPos : NeighborPositions)
+	for (FHexCellInfo TempPos : neighborPositions)
 	{
-		//AHexCell* Neighbor = *(HexCellPosMap.Find(CalculateHashValue(TempPos.Q, TempPos.R)));
-		AHexCell** NeighborPtr = HexCellPosMap.Find(CalculateHashValue(TempPos.Q, TempPos.R));
-		if (NeighborPtr != nullptr)
+		FHexCellInfo* neighborPtr = hexCellSet.Find(TempPos);
+		if (neighborPtr != nullptr)
 		{
-			AHexCell* Neighbor = *NeighborPtr;
-			if (Neighbor && Neighbor->bWalkable)
+			if (neighborPtr && neighborPtr->bWalkable)
 			{
-				Neighbors.Add(Neighbor);
+				neighbors.Add(neighborPtr);
 			}
+			index++;
 		}
-		index++;
 	}
 
-	return Neighbors;
+	return neighbors;
 }
 
-int32 AChessBoardManager::GetDistanceBetweenTwoHexCell(AHexCell* StartCell, AHexCell* TargetCell)
+int32 AChessBoardManager::GetDistanceBetweenTwoHexCell(FHexCellInfo* StartCell, FHexCellInfo* TargetCell)
 {
-	int32 Distance_Q = FMath::Abs(StartCell->SelfCellPos.Q - TargetCell->SelfCellPos.Q);
-	int32 Distance_R = FMath::Abs(StartCell->SelfCellPos.R - TargetCell->SelfCellPos.R);
+	int32 Distance_Q = FMath::Abs(StartCell->Q - TargetCell->Q);
+	int32 Distance_R = FMath::Abs(StartCell->R - TargetCell->R);
 	return Distance_Q + Distance_R;
 }
 
@@ -243,46 +221,48 @@ int AChessBoardManager::CalculateHashValue(int32 Q, int32 R)
 
 void AChessBoardManager::ChangeAllToWalkable()
 {
-	for (AHexCell* Cell : HexCells)
-	{
-		if (!Cell->bWalkable)
-		{
-			Cell->bWalkable = true;
-		}
-	}
+
 }
 
-TArray<int32> AChessBoardManager::GetNeighborsForGraph(FHexCellPosition Position)
+TArray<int32> AChessBoardManager::GetNeighborsForGraph(FHexCellInfo* Position)
 {
-	TArray<int32> Neighbors;
-	TArray<FHexCellPosition> NeighborPositions;
+	TArray<int32> neighbors;
+	TArray<FHexCellInfo> neighborPositions;
 
-	NeighborPositions.Add(FHexCellPosition(Position.Q + 1, Position.R));		// 0'方向
-	NeighborPositions.Add(FHexCellPosition(Position.Q + 1, Position.R - 1));	// 60'方向
-	NeighborPositions.Add(FHexCellPosition(Position.Q, Position.R - 1));		// 120'方向
-	NeighborPositions.Add(FHexCellPosition(Position.Q - 1, Position.R));		// 180'方向
-	NeighborPositions.Add(FHexCellPosition(Position.Q - 1, Position.R + 1));	// 240'方向
-	NeighborPositions.Add(FHexCellPosition(Position.Q, Position.R + 1));		// 300'方向
+	neighborPositions.Add(FHexCellInfo(Position->Q + 1, Position->R));		// 0'方向
+	neighborPositions.Add(FHexCellInfo(Position->Q + 1, Position->R - 1));	// 60'方向
+	neighborPositions.Add(FHexCellInfo(Position->Q, Position->R - 1));		// 120'方向
+	neighborPositions.Add(FHexCellInfo(Position->Q - 1, Position->R));		// 180'方向
+	neighborPositions.Add(FHexCellInfo(Position->Q - 1, Position->R + 1));	// 240'方向
+	neighborPositions.Add(FHexCellInfo(Position->Q, Position->R + 1));		// 300'方向
 
 	int index = 0;
-	for (FHexCellPosition TempPos : NeighborPositions)
+	for (FHexCellInfo TempPos : neighborPositions)
 	{
-		//AHexCell* Neighbor = *(HexCellPosMap.Find(CalculateHashValue(TempPos.Q, TempPos.R)));
-		FHexCellPosition* NeighborPtr = hexCellSet.Find(TempPos);
-		if (NeighborPtr != nullptr)
+		FHexCellInfo* NeighborPtr = hexCellSet.Find(TempPos);
+		if (NeighborPtr != nullptr and NeighborPtr->Height == Position->Height)
 		{
-			Neighbors.Add(index);
+			neighbors.Add(index);
 		}
 		index++;
 	}
 
-	return Neighbors;
+	return neighbors;
 }
 
 // 获取多边形轮廓的顶点列表  
-void AChessBoardManager::GetIslandOutlineEdges(const TSet<FHexCellPosition> inHexCellSet)
+void AChessBoardManager::GetIslandOutlineEdges(const TSet<FHexCellInfo>* inHexCellSet, int32 height)
 {
-	for (const auto hex : inHexCellSet) {
+	outlineEdgeSet.Empty();
+
+	for (auto it : *inHexCellSet) 
+	{
+		FHexCellInfo* hex = &it;
+		if (hex->Height != height)
+		{
+			continue;
+		}
+
 		TArray<int32> neighbors = GetNeighborsForGraph(hex);
 		TArray<int32> outline = { 1,1,1,1,1,1 };
 		for (int neighbor : neighbors)
@@ -297,40 +277,40 @@ void AChessBoardManager::GetIslandOutlineEdges(const TSet<FHexCellPosition> inHe
 				switch (index)
 				{
 				case 0:
-					outlineEdge.A.X = 2 * SQU3 * hex.Q + SQU3 * hex.R + SQU3;
-					outlineEdge.A.Y = -3 * hex.R - 1;
-					outlineEdge.B.X = 2 * SQU3 * hex.Q + SQU3 * hex.R + SQU3;
-					outlineEdge.B.Y = -3 * hex.R + 1;
-					break;
-				case 1:
-					outlineEdge.A.X = 2 * SQU3 * hex.Q + SQU3 * hex.R + SQU3;
-					outlineEdge.A.Y = -3 * hex.R + 1;
-					outlineEdge.B.X = 2 * SQU3 * hex.Q + SQU3 * hex.R;
-					outlineEdge.B.Y = -3 * hex.R + 2;
-					break;
-				case 2:
-					outlineEdge.A.X = 2 * SQU3 * hex.Q + SQU3 * hex.R;
-					outlineEdge.A.Y = -3 * hex.R + 2;
-					outlineEdge.B.X = 2 * SQU3 * hex.Q + SQU3 * hex.R - SQU3;
-					outlineEdge.B.Y = -3 * hex.R + 1;
-					break;
-				case 3:
-					outlineEdge.A.X = 2 * SQU3 * hex.Q + SQU3 * hex.R - SQU3;
-					outlineEdge.A.Y = -3 * hex.R + 1;
-					outlineEdge.B.X = 2 * SQU3 * hex.Q + SQU3 * hex.R - SQU3;
-					outlineEdge.B.Y = -3 * hex.R - 1;
-					break;
-				case 4:
-					outlineEdge.A.X = 2 * SQU3 * hex.Q + SQU3 * hex.R - SQU3;
-					outlineEdge.A.Y = -3 * hex.R - 1;
-					outlineEdge.B.X = 2 * SQU3 * hex.Q + SQU3 * hex.R;
-					outlineEdge.B.Y = -3 * hex.R - 2;
+					outlineEdge.A.X = 2 * SQU3 * hex->Q + SQU3 * hex->R + SQU3;
+					outlineEdge.A.Y = 3 * hex->R - 1;
+					outlineEdge.B.X = 2 * SQU3 * hex->Q + SQU3 * hex->R + SQU3;
+					outlineEdge.B.Y = 3 * hex->R + 1;
 					break;
 				case 5:
-					outlineEdge.A.X = 2 * SQU3 * hex.Q + SQU3 * hex.R;
-					outlineEdge.A.Y = -3 * hex.R - 2;
-					outlineEdge.B.X = 2 * SQU3 * hex.Q + SQU3 * hex.R + SQU3;
-					outlineEdge.B.Y = -3 * hex.R - 1;
+					outlineEdge.A.X = 2 * SQU3 * hex->Q + SQU3 * hex->R + SQU3;
+					outlineEdge.A.Y = 3 * hex->R + 1;
+					outlineEdge.B.X = 2 * SQU3 * hex->Q + SQU3 * hex->R;
+					outlineEdge.B.Y = 3 * hex->R + 2;
+					break;
+				case 4:
+					outlineEdge.A.X = 2 * SQU3 * hex->Q + SQU3 * hex->R;
+					outlineEdge.A.Y = 3 * hex->R + 2;
+					outlineEdge.B.X = 2 * SQU3 * hex->Q + SQU3 * hex->R - SQU3;
+					outlineEdge.B.Y = 3 * hex->R + 1;
+					break;
+				case 3:
+					outlineEdge.A.X = 2 * SQU3 * hex->Q + SQU3 * hex->R - SQU3;
+					outlineEdge.A.Y = 3 * hex->R + 1;
+					outlineEdge.B.X = 2 * SQU3 * hex->Q + SQU3 * hex->R - SQU3;
+					outlineEdge.B.Y = 3 * hex->R - 1;
+					break;
+				case 2:
+					outlineEdge.A.X = 2 * SQU3 * hex->Q + SQU3 * hex->R - SQU3;
+					outlineEdge.A.Y = 3 * hex->R - 1;
+					outlineEdge.B.X = 2 * SQU3 * hex->Q + SQU3 * hex->R;
+					outlineEdge.B.Y = 3 * hex->R - 2;
+					break;
+				case 1:
+					outlineEdge.A.X = 2 * SQU3 * hex->Q + SQU3 * hex->R;
+					outlineEdge.A.Y = 3 * hex->R - 2;
+					outlineEdge.B.X = 2 * SQU3 * hex->Q + SQU3 * hex->R + SQU3;
+					outlineEdge.B.Y = 3 * hex->R - 1;
 					break;
 				default:
 					break;
@@ -353,12 +333,16 @@ TArray<FVector2f> AChessBoardManager::GetIslandOutlineVertices()
 	startPoint = outlineEdgeSet.Find(iter->Key);
 	while (true)
 	{
+		if (startPoint == nullptr)
+		{
+			break;
+		}
 		endPoint = outlineEdgeSet.Find(*startPoint);
 		if (endPoint == nullptr)
 		{
 			break;
 		}
-		polygonVerticesArray.Add(*endPoint * 100);
+		polygonVerticesArray.Add(*endPoint * edgeLength * 0.5f);
 		UE_LOG(LogTemp, Warning, TEXT("Point(%f,%f)"), endPoint->X, endPoint->Y);
 		outlineEdgeSet.Remove(*startPoint);
 
@@ -367,14 +351,79 @@ TArray<FVector2f> AChessBoardManager::GetIslandOutlineVertices()
 		{
 			break;
 		}
-		polygonVerticesArray.Add(*startPoint * 100);
+		polygonVerticesArray.Add(*startPoint * edgeLength * 0.5f);
 		UE_LOG(LogTemp, Warning, TEXT("Point(%f,%f)"), startPoint->X, startPoint->Y);
 		outlineEdgeSet.Remove(*endPoint);
 	}
-	/*if (polygonVerticesTable != nullptr)
-	{
-		polygonVerticesTable->AddRow("d", FPolygonVertices(polygonVerticesArray));
-	}*/
+
 	return polygonVerticesArray;
+}
+
+FHexCellInfo* AChessBoardManager::GetHexCellUnderXYPoint(FVector position)
+{
+	float unit_x = edgeLength * SQU3;
+	float unit_y = edgeLength * 1.5f;
+	float minDistanceLimit = edgeLength * SQU3 * 0.5f;
+	TArray<FVector2D> anchors;
+	anchors.Add(FVector2D::ZeroVector);
+	anchors.Add(FVector2D::ZeroVector);
+	anchors.Add(FVector2D::ZeroVector);
+	float distance;
+	float minDistance = 10000;
+	int index = 0;
+
+	int32 index_x = position.X / unit_x - (position.X < 0 ? 1 : 0);
+	int32 index_y = position.Y / unit_y - (position.Y < 0 ? 1 : 0);
+	anchors[0].X = index_x * unit_x;
+	anchors[1].X = (index_x + 0.5) * unit_x;
+	anchors[2].X = (index_x + 1) * unit_x;
+	if (index_y % 2 == 0)
+	{
+		anchors[0].Y = anchors[2].Y = index_y * unit_y;
+		anchors[1].Y = (index_y + 1) * unit_y;
+	}
+	else
+	{
+		anchors[0].Y = anchors[2].Y = (index_y + 1) * unit_y;
+		anchors[1].Y = index_y * unit_y;
+	}
+	// 找出距离坐标最近的一个点
+	for (int i = 0; i < 3; i++)
+	{
+		//求出距离的平方
+		UE_LOG(LogTemp, Warning, TEXT("anchor:(%f,%f)"), anchors[i].X, anchors[i].Y);
+		distance = FVector2D::Distance(FVector2D(position.X, position.Y), FVector2D(anchors[i].X, anchors[i].Y));
+		UE_LOG(LogTemp, Warning, TEXT("distance:(%f)"), distance);
+		//如果已经肯定被捕获
+		if (distance < minDistanceLimit)
+		{
+			index = i;
+			break;
+		}
+
+		//更新最小距离值和索引
+		if (distance < minDistance)
+		{
+			minDistance = distance;
+			index = i;
+		}
+	}
+
+	int32 q = (anchors[index].X / SQU3 - anchors[index].Y / 3.f) / edgeLength;
+	int32 r = anchors[index].Y * 2.f / 3.f / edgeLength;
+	UE_LOG(LogTemp, Warning, TEXT("index:%d XY:(%f,%f)"), index, anchors[index].X, anchors[index].Y);
+	UE_LOG(LogTemp, Warning, TEXT("QRS:(%d,%d)"), q, r);
+	if (FHexCellInfo* hexPtr = hexCellSet.Find(FHexCellInfo(q,r)))
+	{
+		return hexPtr;
+	}
+	return nullptr;
+}
+
+FVector AChessBoardManager::GetXYPointOfHexCell(int32 q, int32 r, FVector position)
+{
+	position.X = (SQU3 * q + SQU3 / 2.f * r) * edgeLength;
+	position.Y = 1.5f * r * edgeLength;
+	return position;
 }
 

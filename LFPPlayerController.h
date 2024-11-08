@@ -7,6 +7,7 @@
 #include "GameFramework/PlayerController.h"
 
 #include "LFP/ChessBoard/HexCell.h"
+#include "LFP/ChessBoard/ChessBoardManager.h"
 
 #include "LFPPlayerController.generated.h"
 
@@ -86,6 +87,10 @@ private:
 	class AInteractableItemBase* LastItem = nullptr;
 
 public:
+	/** Jump Input Action */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "ChessBoard")
+	AChessBoardManager* chessBoardManager;
+
 	UFUNCTION(BlueprintCallable)
 	AHexCell* GetHexCellUnderCursor();
 };

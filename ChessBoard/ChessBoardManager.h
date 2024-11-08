@@ -42,16 +42,6 @@ public:
 	UPROPERTY(BlueprintAssignable, Category = "ChessBoard")
 	FShowChessBoardEvent OnShowChessBoardEvent;
 
-	//UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "ChessBoard")
-	//UStaticMesh* HexCellMesh;
-
-	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "ChessBoard")
-	TSubclassOf<AHexCell> HexCellActor;
-
-	TArray<AHexCell*> HexCells;
-
-	TMap<int, AHexCell*> HexCellPosMap;
-
 	UFUNCTION(BlueprintCallable, Category = "ChessBoard")
 	void CreateChessBoard();
 
@@ -63,16 +53,11 @@ public:
 
 	// A-Star Algorithm
 	//https://www.bilibili.com/video/BV1v44y1h7Dt/?spm_id_from=444.41.top_right_bar_window_custom_collection.content.click&vd_source=b9cf0af5ab89bda1ad834fb699b19e4c
-	UFUNCTION(BlueprintCallable, Category = "ChessBoard")
-	TArray<AHexCell*> FindPath(AHexCell* StartCell, AHexCell* TargetCell);
+	TArray<FHexCellInfo*> FindPath(FHexCellInfo* StartCell, FHexCellInfo* TargetCell);
 
 protected:
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "ChessBoard")
 	float edgeLength{ 100.f };
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "ChessBoard")
-	int32 numRows{ 5 };
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "ChessBoard")
-	int32 numColumns{ 5 };
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "ChessBoard")
 	UDataTable* hexCellTable;
@@ -80,15 +65,16 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "ChessBoard")
 	UDataTable* polygonVerticesTable;
 
-	TSet<FHexCellPosition> hexCellSet;
+	TSet<FHexCellInfo> hexCellSet;
+	TSet<FHexCellInfo>* hexCellSetPtr = &hexCellSet;
 
 	TMap<FVector2f, FVector2f> outlineEdgeSet;
 
 	FVector CalculateCellLocation(int32 Row, int32 Col);
 
-	TArray<AHexCell*> GetNeighbors(FHexCellPosition Position);
+	TArray<FHexCellInfo*> GetNeighbors(FHexCellInfo* Position);
 
-	int32 GetDistanceBetweenTwoHexCell(AHexCell* StartCell, AHexCell* TargetCell);
+	int32 GetDistanceBetweenTwoHexCell(FHexCellInfo* StartCell, FHexCellInfo* TargetCell);
 
 	int CalculateHashValue(int32 Q, int32 R);
 
@@ -97,10 +83,14 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "ChessBoard")
 	void ChangeAllToWalkable();
 
-	TArray<int32> GetNeighborsForGraph(FHexCellPosition Position);
-	UFUNCTION(BlueprintCallable, Category = "ChessBoard")
-	void GetIslandOutlineEdges(const TSet<FHexCellPosition> hexCellSet);
+	TArray<int32> GetNeighborsForGraph(FHexCellInfo* Position);
+	
+	void GetIslandOutlineEdges(const TSet<FHexCellInfo>* hexCellset, int32 height);
 
 	UFUNCTION(BlueprintCallable, Category = "ChessBoard")
 	TArray<FVector2f> GetIslandOutlineVertices();
+
+	FHexCellInfo* GetHexCellUnderXYPoint(FVector position);
+
+	FVector GetXYPointOfHexCell(int32 q, int32 r, FVector position);
 };

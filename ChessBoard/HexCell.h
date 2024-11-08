@@ -10,7 +10,7 @@
 #include "HexCell.generated.h"
 
 USTRUCT(BlueprintType)
-struct FHexCellPosition : public FTableRowBase
+struct FHexCellInfo : public FTableRowBase
 {
 	GENERATED_USTRUCT_BODY()
 
@@ -19,31 +19,43 @@ public:
 	int32 Q{ 0 };
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Table")
 	int32 R{ 0 };
-	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Table")
+
 	int32 S{ 0 };
 
-	FHexCellPosition()
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	int32 Height{ 0 };
+
+	bool bWalkable{ true };
+
+	int32 AStar_F{ 0 };
+	int32 AStar_H{ 0 };
+	int32 AStar_G{ 0 };
+
+	FHexCellInfo* ConnectedCell{ nullptr };
+
+	FHexCellInfo()
 		: Q(0)
 		, R(0)
+		, S(0)
 	{ }
 
-	FHexCellPosition(int32 newQ, int32 newR)
+	FHexCellInfo(int32 newQ, int32 newR)
 		: Q(newQ)
 		, R(newR)
 		, S(-newQ - newR)
 	{ }
 
-	bool operator==(const FHexCellPosition& Other) const
+	bool operator==(const FHexCellInfo& Other) const
 	{
 		return (Q == Other.Q && R == Other.R);
 	}
 
-	bool operator!=(const FHexCellPosition& Other) const
+	bool operator!=(const FHexCellInfo& Other) const
 	{
 		return (Q != Other.Q || R != Other.R);
 	}
 
-	friend uint32 GetTypeHash(const FHexCellPosition& hexCellPosition)
+	friend uint32 GetTypeHash(const FHexCellInfo& hexCellPosition)
 	{
 		return HashCombine(GetTypeHash(hexCellPosition.Q), GetTypeHash(hexCellPosition.R));
 	}
@@ -93,24 +105,31 @@ struct FPolygonVertices : public FTableRowBase
 
 public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Table")
-	TArray<FVector2f> A{ };
+	TArray<FVector2f> vertices{ };
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Table")
+	int32 height{ 0 };
 
 	FPolygonVertices()
-		: A()
+		: vertices(), height(0)
 	{ }
 
 	FPolygonVertices(TArray<FVector2f> array)
-		: A(array)
+		: vertices(array), height(0)
+	{ }
+
+	FPolygonVertices(TArray<FVector2f> array, int32 h)
+		: vertices(array), height(h)
 	{ }
 
 	bool operator==(const FPolygonVertices& Other) const
 	{
-		return (A == Other.A);
+		return (vertices == Other.vertices and height == Other.height);
 	}
 
 	bool operator!=(const FPolygonVertices& Other) const
 	{
-		return (A != Other.A);
+		return (vertices != Other.vertices || height != Other.height);
 	}
 };
 
@@ -165,7 +184,7 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	bool bWalkable{ true };
 
-	FHexCellPosition SelfCellPos;
+	FHexCellInfo SelfCellPos;
 	AHexCell* ConnectedCell;
 
 	int32 AStar_F{ 0 };
